@@ -1,0 +1,6 @@
+.idea/
+a.out
+output/
+.DS_Store
+tests/.DS_Store
+cmake-build-debug/
