@@ -1,6 +1,6 @@
 #!/bin/bash
 
-g++ --std=c++11 lexer.cc inputbuf.cc
+g++ --std=c++11 lexer.cc inputbuf.cc parser.cc
 
 if [ ! -d "./tests" ]; then
     echo "Error: tests directory not found!"
