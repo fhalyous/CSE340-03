@@ -1,6 +1,7 @@
 .idea/
 a.out
+docs/
 output/
+tests/
 .DS_Store
 tests/.DS_Store
-cmake-build-debug/

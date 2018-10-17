@@ -1,0 +1,49 @@
+program	-> scope #
+scope	-> LBRACE scopelist RBRACE #
+scopelist	-> scope #
+scopelist	-> vardecl #
+scopelist	-> stmt #
+scopelist	-> scope scopelist #
+scopelist	-> vardecl scopelist #
+scopelist	-> stmt scopelist #
+vardecl	-> idlist COLON typename SEMICOLON #
+idlist	-> ID #
+idlist	-> ID COMMA idlist #
+typename	-> REAL #
+typename -> INT #
+typename -> BOOLEAN #
+typename -> STRING #
+stmtlist	-> stmt #
+stmtlist	-> stmt stmtlist #
+stmt	-> assignstmt #
+stmt	-> whilestmt #
+assignstmt	-> ID EQUAL expr SEMICOLON #
+whilestmt	-> WHILE condition LBRACE stmtlist RBRACE #
+whilestmt	-> WHILE condition stmt #
+expr	-> arithmeticoperator expr expr #
+expr	-> booleanoperator expr expr #
+expr	-> relationaloperator expr expr #
+expr	-> NOT expr #
+expr	-> primary #
+arithmeticoperator	-> PLUS #
+arithmeticoperator -> MINUS #
+arithmeticoperator -> MULT #
+arithmeticoperator -> DIV #
+booleanoperator	-> AND #
+booleanoperator -> OR #
+booleanoperator -> XOR #
+booleanoperator -> NOT #
+relationaloperator	-> GREATER #
+relationaloperator -> GTEQ #
+relationaloperator -> LESS #
+relationaloperator -> NOTEQUAL #
+relationaloperator -> LTEQ #
+primary	-> ID #
+primary -> NUM #
+primary -> REALNUM #
+primary -> STRING CONSTANT #
+primary -> boolconst #
+boolconst	-> TRUE #
+boolconst -> FALSE #
+condition	-> LPAREN expr RPAREN #
+##
