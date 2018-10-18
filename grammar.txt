@@ -32,7 +32,6 @@ arithmeticoperator -> DIV #
 booleanoperator	-> AND #
 booleanoperator -> OR #
 booleanoperator -> XOR #
-booleanoperator -> NOT #
 relationaloperator	-> GREATER #
 relationaloperator -> GTEQ #
 relationaloperator -> LESS #

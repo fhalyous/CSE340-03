@@ -28,6 +28,7 @@ public:
     bool parse_primary();
     bool parse_bool_const();
     bool parse_condition();
+    std::vector<Token> token_list;
 
 private:
     LexicalAnalyzer lexer;
