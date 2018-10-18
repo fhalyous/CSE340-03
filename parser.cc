@@ -232,7 +232,6 @@ bool Parser::parse_while_stmt(){
 
 bool Parser::parse_expr(){
     Token t = lexer.GetToken();
-    cout << reserve[t.token_type] << endl;
     if (t.token_type == PLUS || t.token_type ==  MINUS|| t.token_type == MULT || t.token_type == DIV){
         lexer.UngetToken(t);
         if (parse_arithmetic_operator()){
@@ -261,34 +260,18 @@ bool Parser::parse_expr(){
             return true;
         }
     }
-    else if (t.token_type == AND || t.token_type ==  OR|| t.token_type == XOR || t.token_type == NOT){
-        if (t.token_type == NOT){
+    else if (t.token_type == AND || t.token_type ==  OR|| t.token_type == XOR){
+        lexer.UngetToken(t);
+        if (parse_boolean_operator()){
             if (parse_expr()){
-                t = lexer.GetToken();
-                if (t.token_type == SEMICOLON || t.token_type == RPAREN){
-                    lexer.UngetToken(t);
+                if (parse_expr()){
                     return true;
-                }
-                else if (t.token_type == ID||t.token_type == STRING||t.token_type == NOT||t.token_type == PLUS
-                    ||t.token_type == MINUS||t.token_type == MULT||t.token_type == DIV||t.token_type ==AND
-                    ||t.token_type == OR||t.token_type == XOR||t.token_type == GREATER||t.token_type == GTEQ
-                    ||t.token_type == LESS||t.token_type == NOTEQUAL||t.token_type == LTEQ||t.token_type == NUM
-                    ||t.token_type == REALNUM||t.token_type == TRUE||t.token_type == FALSE){
-                    if (parse_expr()){
-                        return true;
-                    }
                 }
             }
         }
-        else {
-            lexer.UngetToken(t);
-            if (parse_boolean_operator()){
-                if (parse_expr()){
-                    if (parse_expr()){
-                        return true;
-                    }
-                }
-            }
+    else if (t.token_type == NOT){
+        if (parse_expr()){
+            return true;
         }
     }
     return false;
@@ -304,7 +287,7 @@ bool Parser::parse_arithmetic_operator(){
 
 bool Parser::parse_boolean_operator(){
     Token t = lexer.GetToken();
-    if (t.token_type == AND || t.token_type ==  OR|| t.token_type == XOR || t.token_type == NOT){
+    if (t.token_type == AND || t.token_type ==  OR|| t.token_type == XOR){
         return true;
     }
     return false;
@@ -360,4 +343,5 @@ int main()
     }else{
         cout << "Syntax Error" << endl;
     }
+
 }

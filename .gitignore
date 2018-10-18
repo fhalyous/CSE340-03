@@ -3,5 +3,6 @@ a.out
 docs/
 output/
 tests/
+test.sh
 .DS_Store
 tests/.DS_Store
