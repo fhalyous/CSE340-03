@@ -375,12 +375,11 @@ bool Parser::parse_condition() {
 int main() {
     Parser parser;
     if (parser.parse_program()) {
-        cout << "No Syntax Error" << endl;
+        vector<Token>::iterator it;
+        for (it = parser.token_list.begin()+1; it != parser.token_list.end(); it++){
+            it->Print();
+        }
     } else {
         cout << "Syntax Error" << endl;
-    }
-    vector<Token>::iterator it;
-    for (it = parser.token_list.begin(); it != parser.token_list.end(); it++){
-        it->Print();
     }
 }

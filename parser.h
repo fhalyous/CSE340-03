@@ -9,6 +9,11 @@
 
 #include "lexer.h"
 
+typedef struct Scope{
+    std::vector<Token> vars;
+    Scope* prev;
+}scope;
+
 class Parser{
 public:
     bool parse_program();
