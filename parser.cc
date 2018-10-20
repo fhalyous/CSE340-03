@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <set>
 
 #include "parser.h"
 
@@ -22,9 +23,15 @@ string reserve[] = {"END_OF_FILE",
                     "ID", "NUM", "REALNUM", "STRING_CONSTANT", "ERROR"
 };
 
+Scope* scope = new Scope();
+string errorCode = "";
+
 bool Parser::parse_program() {
     if (parse_scope()) {
-        return true;
+        Token t = lexer.GetToken();
+        if (t.token_type == END_OF_FILE){
+            return true;
+        }
     }
     return false;
 }
@@ -33,10 +40,27 @@ bool Parser::parse_scope() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == LBRACE) {
+        Scope* sc = new Scope();
+        sc->prev = scope;
+        scope = sc;
         if (parse_scope_list()) {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == RBRACE) {
+                set<string> variableSet;
+                for (auto const &vars: scope->vars){
+                    if(variableSet.find(vars.name) != variableSet.end()){
+                        errorCode = "ERROR CODE 1.1 " + vars.name;
+                    }
+                    variableSet.insert(vars.name);
+                    if (find(scope->usedVars.begin(), scope->usedVars.end(), vars.name) == scope->usedVars.end()){
+                        errorCode = "ERROR CODE 1.3 " + vars.name;
+                    }
+                    // cout << vars.name << "::" << reserve[vars.token_type] << "::" << vars.line_no << endl;
+                }
+                Scope* temp = scope;
+                scope = scope->prev;
+                free(temp);
                 return true;
             }
         }
@@ -136,6 +160,14 @@ bool Parser::parse_var_decl() {
         Token t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == COLON) {
+            t = lexer.GetToken();
+            vector<Variable>::iterator i;
+            for (i = scope->vars.begin(); i != scope->vars.end(); i++){
+                if (i->line_no == t.line_no){
+                    i->token_type = t.token_type;
+                }
+            }
+            lexer.UngetToken(t);
             if (parse_type_name()) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
@@ -152,6 +184,10 @@ bool Parser::parse_id_list() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID) {
+        Variable variable;
+        variable.name = t.lexeme;
+        variable.line_no = t.line_no;
+        scope->vars.push_back(variable);
         t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == COLON) {
@@ -218,6 +254,11 @@ bool Parser::parse_assign_stmt() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID) {
+        addUsedVars(t.lexeme);
+        scope->leftVars.push_back(t.lexeme);
+        if(!findDeclaration(t.lexeme)){
+            errorCode = "ERROR CODE 1.2 " + t.lexeme;
+        }
         t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == EQUAL) {
@@ -340,6 +381,15 @@ bool Parser::parse_relational_operator() {
 bool Parser::parse_primary() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
+    if (t.token_type == ID){
+        scope->usedVars.push_back(t.lexeme);
+        if(!findInitialization(t.lexeme)){
+            errorCode = errorCode + "UNINITIALIZED " + t.lexeme + " " + to_string(t.line_no) + "\n";
+        }
+        if(!findDeclaration(t.lexeme)){
+            errorCode = "ERROR CODE 1.2 " + t.lexeme;
+        }
+    }
     if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM || t.token_type == STRING_CONSTANT) {
         return true;
     } else if (t.token_type == TRUE || t.token_type == FALSE) {
@@ -372,13 +422,45 @@ bool Parser::parse_condition() {
     return false;
 }
 
+bool Parser::findDeclaration(string name){
+    vector<Variable>::iterator i;
+    bool found = false;
+    Scope* foo = scope;
+    while(foo != NULL){
+        for (i = foo->vars.begin(); i != foo->vars.end(); i++){
+            if (name == i->name){
+                found = true;
+            }
+        }
+        foo = foo->prev;
+    }
+    return found;
+}
+
+bool Parser::findInitialization(string name){
+    bool found = false;
+    Scope* foo = scope;
+    while(foo != NULL){
+        if (find(foo->leftVars.begin(), foo->leftVars.end(), name) != foo->leftVars.end()){
+            found = true;
+        }
+        foo = foo->prev;
+    }
+    return found;
+}
+
+void Parser::addUsedVars(string name){
+    Scope* foo = scope;
+    while(foo != NULL){
+        foo->usedVars.push_back(name);
+        foo = foo->prev;
+    }
+}
+
 int main() {
     Parser parser;
     if (parser.parse_program()) {
-        vector<Token>::iterator it;
-        for (it = parser.token_list.begin()+1; it != parser.token_list.end(); it++){
-            it->Print();
-        }
+        cout << errorCode << endl;
     } else {
         cout << "Syntax Error" << endl;
     }

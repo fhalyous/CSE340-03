@@ -9,10 +9,18 @@
 
 #include "lexer.h"
 
-typedef struct Scope{
-    std::vector<Token> vars;
+struct Variable{
+    std::string name;
+    TokenType token_type;
+    int line_no;
+};
+
+struct Scope{
+    std::vector<Variable> vars;
+    std::vector<std::string> usedVars;
+    std::vector<std::string> leftVars;
     Scope* prev;
-}scope;
+};
 
 class Parser{
 public:
@@ -33,6 +41,9 @@ public:
     bool parse_primary();
     bool parse_bool_const();
     bool parse_condition();
+    bool findDeclaration(std::string name);
+    bool findInitialization(std::string name);
+    void addUsedVars(std::string name);
     std::vector<Token> token_list;
 
 private:

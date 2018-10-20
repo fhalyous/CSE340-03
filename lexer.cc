@@ -275,6 +275,7 @@ Token LexicalAnalyzer::GetToken()
         case '^': tmp.token_type = AND;         return tmp;
         case '&': tmp.token_type = XOR;         return tmp;
         case '~': tmp.token_type = NOT;         return tmp;
+        case '/': tmp.token_type = DIV;         return tmp;
         case '>':
             input.GetChar(c);
             if (c == '=') {
