@@ -9,6 +9,7 @@
 #include <string>
 #include <cctype>
 #include <set>
+#include<algorithm>
 
 #include "parser.h"
 
