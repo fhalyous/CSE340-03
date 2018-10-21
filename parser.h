@@ -34,14 +34,12 @@ public:
     bool parse_stmt();
     bool parse_assign_stmt();
     bool parse_while_stmt();
-    bool parse_expr();
-    bool parse_arithmetic_operator();
-    bool parse_boolean_operator();
+    TokenType parse_expr();
     bool parse_relational_operator();
     bool parse_primary();
-    bool parse_bool_const();
     bool parse_condition();
     bool findDeclaration(std::string name);
+    TokenType findDeclaration1(std::string name);
     bool findInitialization(std::string name);
     void addUsedVars(std::string name);
     std::vector<Token> token_list;

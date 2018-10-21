@@ -254,6 +254,7 @@ bool Parser::parse_assign_stmt() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID) {
+        TokenType type = t.token_type;
         addUsedVars(t.lexeme);
         scope->leftVars.push_back(t.lexeme);
         if(!findDeclaration(t.lexeme)){
@@ -262,7 +263,7 @@ bool Parser::parse_assign_stmt() {
         t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == EQUAL) {
-            if (parse_expr()) {
+            if (parse_expr() != ERROR) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
                 if (t.token_type == SEMICOLON) {
@@ -301,81 +302,65 @@ bool Parser::parse_while_stmt() {
     return false;
 }
 
-bool Parser::parse_expr() {
+TokenType Parser::parse_expr() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
-    if (t.token_type == PLUS || t.token_type == MINUS || t.token_type == MULT || t.token_type == DIV) {
-        lexer.UngetToken(t);
-        token_list.pop_back();
-        if (parse_arithmetic_operator()) {
-            if (parse_expr()) {
-                if (parse_expr()) {
-                    return true;
-                }
-            }
+    if (t.token_type == PLUS || t.token_type == MINUS || t.token_type == MULT ) {
+        TokenType t1 = parse_expr();
+        TokenType t2 = parse_expr();
+        if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
+            return REAL;
+        }
+        else if (t1 == INT && t2 == INT){
+            return INT;
+        }
+    }else if (t.token_type == DIV){
+        TokenType t1 = parse_expr();
+        TokenType t2 = parse_expr();
+        if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
+            return REAL;
+        }
+        else if (t1 == INT && t2 == INT){
+            return REAL;
         }
     } else if (t.token_type == GREATER || t.token_type == GTEQ || t.token_type == LESS
                || t.token_type == NOTEQUAL || t.token_type == LTEQ) {
-        lexer.UngetToken(t);
-        token_list.pop_back();
-        if (parse_relational_operator()) {
-            if (parse_expr()) {
-                if (parse_expr()) {
-                    return true;
-                }
-            }
+        TokenType t1 = parse_expr();
+        TokenType t2 = parse_expr();
+        if (t1 == BOOLEAN && t2 == BOOLEAN){
+            return BOOLEAN;
+        }
+        else if (t1 == STRING && t2 == STRING){
+            return BOOLEAN;
+        }
+        else if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
+            return BOOLEAN;
+        }
+        else if (t1 == INT && t2 == INT){
+            return BOOLEAN;
         }
     } else if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM
                || t.token_type == STRING_CONSTANT || t.token_type == TRUE || t.token_type == FALSE) {
+        Token t1 = t;
         lexer.UngetToken(t);
         token_list.pop_back();
         if (parse_primary()) {
-            return true;
+            //Uncomment this
+            // if (t.token_type == ID){
+            //     return findDeclaration1(t1.lexeme);
+            // }
+            return t1.token_type;
         }
     } else if (t.token_type == AND || t.token_type == OR || t.token_type == XOR) {
-        lexer.UngetToken(t);
-        token_list.pop_back();
-        if (parse_boolean_operator()) {
-            if (parse_expr()) {
-                if (parse_expr()) {
-                    return true;
-                }
-            }
+        TokenType t1 = parse_expr();
+        TokenType t2 = parse_expr();
+        if (t1 == BOOLEAN && t2 == BOOLEAN){
+            return BOOLEAN;
         }
     } else if (t.token_type == NOT) {
-        if (parse_expr()) {
-            return true;
-        }
+        return parse_expr();
     }
-    return false;
-}
-
-bool Parser::parse_arithmetic_operator() {
-    Token t = lexer.GetToken();
-    token_list.push_back(t);
-    if (t.token_type == PLUS || t.token_type == MINUS || t.token_type == MULT || t.token_type == DIV) {
-        return true;
-    }
-    return false;
-}
-
-bool Parser::parse_boolean_operator() {
-    Token t = lexer.GetToken();
-    token_list.push_back(t);
-    if (t.token_type == AND || t.token_type == OR || t.token_type == XOR) {
-        return true;
-    }
-    return false;
-}
-
-bool Parser::parse_relational_operator() {
-    Token t = lexer.GetToken();
-    token_list.push_back(t);
-    if (t.token_type == GREATER || t.token_type == GTEQ || t.token_type == LESS
-        || t.token_type == NOTEQUAL || t.token_type == LTEQ) {
-        return true;
-    }
-    return false;
+    return ERROR;
 }
 
 bool Parser::parse_primary() {
@@ -398,20 +383,11 @@ bool Parser::parse_primary() {
     return false;
 }
 
-bool Parser::parse_bool_const() {
-    Token t = lexer.GetToken();
-    token_list.push_back(t);
-    if (t.token_type == TRUE || t.token_type == FALSE) {
-        return true;
-    }
-    return false;
-}
-
 bool Parser::parse_condition() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == LPAREN) {
-        if (parse_expr()) {
+        if (parse_expr() != ERROR) {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == RPAREN) {
@@ -430,6 +406,21 @@ bool Parser::findDeclaration(string name){
         for (i = foo->vars.begin(); i != foo->vars.end(); i++){
             if (name == i->name){
                 found = true;
+            }
+        }
+        foo = foo->prev;
+    }
+    return found;
+}
+
+TokenType Parser::findDeclaration1(string name){
+    vector<Variable>::iterator i;
+    TokenType found = ERROR;
+    Scope* foo = scope;
+    while(foo != NULL){
+        for (i = foo->vars.begin(); i != foo->vars.end(); i++){
+            if (name == i->name){
+                found = i->token_type;
             }
         }
         foo = foo->prev;
