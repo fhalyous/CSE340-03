@@ -34,7 +34,7 @@ public:
     bool parse_stmt();
     bool parse_assign_stmt();
     bool parse_while_stmt();
-    TokenType parse_expr();
+    std::pair<TokenType, bool> parse_expr();
     bool parse_relational_operator();
     bool parse_primary();
     bool parse_condition();

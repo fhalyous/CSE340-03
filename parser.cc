@@ -254,16 +254,29 @@ bool Parser::parse_assign_stmt() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID) {
-        TokenType type = t.token_type;
         addUsedVars(t.lexeme);
         scope->leftVars.push_back(t.lexeme);
         if(!findDeclaration(t.lexeme)){
             errorCode = "ERROR CODE 1.2 " + t.lexeme;
         }
+        Token tt = t;
         t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == EQUAL) {
-            if (parse_expr() != ERROR) {
+            pair<TokenType, bool> p = parse_expr();
+            if (tt.token_type != REAL){
+                if (tt.token_type != p.first){
+                    errorCode = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
+                    cout << errorCode << endl;
+                }
+            }
+            else if (tt.token_type == REAL){
+                if (p.first != INT || p.first != REAL){
+                    errorCode = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
+                    cout << errorCode << endl;
+                }
+            }
+            if (p.second) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
                 if (t.token_type == SEMICOLON) {
@@ -302,42 +315,54 @@ bool Parser::parse_while_stmt() {
     return false;
 }
 
-TokenType Parser::parse_expr() {
+pair<TokenType, bool> Parser::parse_expr() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == PLUS || t.token_type == MINUS || t.token_type == MULT ) {
-        TokenType t1 = parse_expr();
-        TokenType t2 = parse_expr();
-        if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
-            return REAL;
+        pair<TokenType, bool> t1 = parse_expr();
+        pair<TokenType, bool> t2 = parse_expr();
+        TokenType tt = ERROR;
+        if ((t1.first == REAL && t2.first == INT )|| (t1.first == INT && t2.first == REAL)){
+            tt = REAL;
         }
-        else if (t1 == INT && t2 == INT){
-            return INT;
+        else if (t1.first == INT && t2.first == INT){
+            tt = INT;
+        }
+        if (t1.second && t2.second){
+            return make_pair(tt, true);
         }
     }else if (t.token_type == DIV){
-        TokenType t1 = parse_expr();
-        TokenType t2 = parse_expr();
-        if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
-            return REAL;
+        pair<TokenType, bool> t1 = parse_expr();
+        pair<TokenType, bool> t2 = parse_expr();
+        TokenType tt = ERROR;
+        if ((t1.first == REAL && t2.first == INT )|| (t1.first == INT && t2.first == REAL)){
+            tt = REAL;
         }
-        else if (t1 == INT && t2 == INT){
-            return REAL;
+        else if (t1.first == INT && t2.first == INT){
+            tt = REAL;
+        }
+        if (t1.second && t2.second){
+            return make_pair(tt, true);
         }
     } else if (t.token_type == GREATER || t.token_type == GTEQ || t.token_type == LESS
                || t.token_type == NOTEQUAL || t.token_type == LTEQ) {
-        TokenType t1 = parse_expr();
-        TokenType t2 = parse_expr();
-        if (t1 == BOOLEAN && t2 == BOOLEAN){
-            return BOOLEAN;
+        pair<TokenType, bool> t1 = parse_expr();
+        pair<TokenType, bool> t2 = parse_expr();
+        TokenType tt = ERROR;
+        if (t1.first == BOOLEAN && t2.first == BOOLEAN){
+            tt = BOOLEAN;
         }
-        else if (t1 == STRING && t2 == STRING){
-            return BOOLEAN;
+        else if (t1.first == STRING && t2.first == STRING){
+            tt = BOOLEAN;
         }
-        else if ((t1 == REAL && t2 == INT )|| (t1 == INT && t2 == REAL)){
-            return BOOLEAN;
+        else if ((t1.first == REAL && t2.first == INT )|| (t1.first == INT && t2.first == REAL)){
+            tt = BOOLEAN;
         }
-        else if (t1 == INT && t2 == INT){
-            return BOOLEAN;
+        else if (t1.first == INT && t2.first == INT){
+            tt = BOOLEAN;
+        }
+        if (t1.second && t2.second){
+            return make_pair(tt, true);
         }
     } else if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM
                || t.token_type == STRING_CONSTANT || t.token_type == TRUE || t.token_type == FALSE) {
@@ -349,18 +374,22 @@ TokenType Parser::parse_expr() {
             // if (t.token_type == ID){
             //     return findDeclaration1(t1.lexeme);
             // }
-            return t1.token_type;
+            return make_pair(t1.token_type, true);
         }
     } else if (t.token_type == AND || t.token_type == OR || t.token_type == XOR) {
-        TokenType t1 = parse_expr();
-        TokenType t2 = parse_expr();
-        if (t1 == BOOLEAN && t2 == BOOLEAN){
-            return BOOLEAN;
+        pair<TokenType, bool> t1 = parse_expr();
+        pair<TokenType, bool> t2 = parse_expr();
+        TokenType tt = ERROR;
+        if (t1.first == BOOLEAN && t2.first == BOOLEAN){
+            tt = BOOLEAN;
+        }
+        if (t1.second && t2.second){
+            return make_pair(tt, true);
         }
     } else if (t.token_type == NOT) {
         return parse_expr();
     }
-    return ERROR;
+    return make_pair(ERROR, false);
 }
 
 bool Parser::parse_primary() {
@@ -387,7 +416,7 @@ bool Parser::parse_condition() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == LPAREN) {
-        if (parse_expr() != ERROR) {
+        if (parse_expr().second) {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == RPAREN) {
