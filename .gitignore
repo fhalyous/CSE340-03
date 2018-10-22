@@ -6,3 +6,4 @@ tests/
 test.sh
 .DS_Store
 tests/.DS_Store
+cmake-build-debug/
