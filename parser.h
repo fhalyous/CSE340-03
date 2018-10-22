@@ -39,7 +39,7 @@ public:
     bool parse_primary();
     bool parse_condition();
     bool findDeclaration(std::string name);
-    TokenType findDeclaration1(std::string name);
+    Token findDeclarationToken(std::string name);
     bool findInitialization(std::string name);
     void addUsedVars(std::string name);
     std::vector<Token> token_list;

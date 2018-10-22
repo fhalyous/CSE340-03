@@ -9,6 +9,7 @@
 #include <string>
 #include <cctype>
 #include <set>
+#include <algorithm>
 
 #include "parser.h"
 
@@ -25,6 +26,9 @@ string reserve[] = {"END_OF_FILE",
 
 Scope* scope = new Scope();
 string errorCode = "";
+string typeError = "";
+string uninError = "";
+string noError = "";
 
 bool Parser::parse_program() {
     if (parse_scope()) {
@@ -54,9 +58,10 @@ bool Parser::parse_scope() {
                     }
                     variableSet.insert(vars.name);
                     if (find(scope->usedVars.begin(), scope->usedVars.end(), vars.name) == scope->usedVars.end()){
-                        errorCode = "ERROR CODE 1.3 " + vars.name;
+                        if (errorCode.find("1.3") != string::npos || errorCode == ""){
+                            errorCode = "ERROR CODE 1.3 " + vars.name;
+                        }
                     }
-                    // cout << vars.name << "::" << reserve[vars.token_type] << "::" << vars.line_no << endl;
                 }
                 Scope* temp = scope;
                 scope = scope->prev;
@@ -254,28 +259,32 @@ bool Parser::parse_assign_stmt() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID) {
-        addUsedVars(t.lexeme);
-        scope->leftVars.push_back(t.lexeme);
-        if(!findDeclaration(t.lexeme)){
-            errorCode = "ERROR CODE 1.2 " + t.lexeme;
+        string lex = t.lexeme;
+        addUsedVars(lex);
+        if(!findDeclaration(lex)){
+            if (errorCode.find("1.1") == string::npos){
+                errorCode = "ERROR CODE 1.2 " + lex;
+            }
         }
+        noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
         Token tt = t;
         t = lexer.GetToken();
         token_list.push_back(t);
         if (t.token_type == EQUAL) {
             pair<TokenType, bool> p = parse_expr();
-            if (tt.token_type != REAL){
-                if (tt.token_type != p.first){
-                    errorCode = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
-                    cout << errorCode << endl;
+            if (typeError == ""){
+                if (findDeclarationToken(tt.lexeme).token_type != REAL){
+                    if (findDeclarationToken(tt.lexeme).token_type != p.first){
+                        typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
+                    }
+                }
+                else if (findDeclarationToken(tt.lexeme).token_type == REAL){
+                    if (p.first != INT && p.first != REAL){
+                        typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
+                    }
                 }
             }
-            else if (tt.token_type == REAL){
-                if (p.first != INT || p.first != REAL){
-                    errorCode = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
-                    cout << errorCode << endl;
-                }
-            }
+            scope->leftVars.push_back(lex);
             if (p.second) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
@@ -328,6 +337,14 @@ pair<TokenType, bool> Parser::parse_expr() {
         else if (t1.first == INT && t2.first == INT){
             tt = INT;
         }
+        else if (t1.first == REAL && t2.first == REAL){
+            tt = REAL;
+        }
+        else{
+            if (typeError == ""){
+                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
+            }
+        }
         if (t1.second && t2.second){
             return make_pair(tt, true);
         }
@@ -341,6 +358,11 @@ pair<TokenType, bool> Parser::parse_expr() {
         else if (t1.first == INT && t2.first == INT){
             tt = REAL;
         }
+        else{
+            if (typeError == ""){
+                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
+            }
+        }
         if (t1.second && t2.second){
             return make_pair(tt, true);
         }
@@ -349,17 +371,31 @@ pair<TokenType, bool> Parser::parse_expr() {
         pair<TokenType, bool> t1 = parse_expr();
         pair<TokenType, bool> t2 = parse_expr();
         TokenType tt = ERROR;
-        if (t1.first == BOOLEAN && t2.first == BOOLEAN){
-            tt = BOOLEAN;
+        if (t1.first == INT || t1.first == REAL || t2.first == INT || t2.first == REAL){
+            if ((t1.first == REAL && t2.first == INT )|| (t1.first == INT && t2.first == REAL)){
+                tt = BOOLEAN;
+            }
+            else if ((t1.first == INT && t2.first == INT) || (t1.first == REAL && t2.first == REAL)){
+                tt = BOOLEAN;
+            }
+            else{
+                if (typeError == ""){
+                    typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C6";
+                }
+            }
         }
-        else if (t1.first == STRING && t2.first == STRING){
-            tt = BOOLEAN;
-        }
-        else if ((t1.first == REAL && t2.first == INT )|| (t1.first == INT && t2.first == REAL)){
-            tt = BOOLEAN;
-        }
-        else if (t1.first == INT && t2.first == INT){
-            tt = BOOLEAN;
+        else{
+            if (t1.first == BOOLEAN && t2.first == BOOLEAN){
+                tt = BOOLEAN;
+            }
+            else if (t1.first == STRING && t2.first == STRING){
+                tt = BOOLEAN;
+            }
+            else if (t1.first != t2.first){
+                if (typeError == ""){
+                    typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C5";
+                }
+            }
         }
         if (t1.second && t2.second){
             return make_pair(tt, true);
@@ -367,13 +403,24 @@ pair<TokenType, bool> Parser::parse_expr() {
     } else if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM
                || t.token_type == STRING_CONSTANT || t.token_type == TRUE || t.token_type == FALSE) {
         Token t1 = t;
+        if(t.token_type == NUM){
+            t1.token_type = INT;
+        }
+        else if (t.token_type == REALNUM){
+            t1.token_type = REAL;
+        }
+        else if(t.token_type == STRING_CONSTANT){
+            t1.token_type = STRING;
+        }
+        else if (t.token_type == TRUE || t.token_type == FALSE){
+            t1.token_type = BOOLEAN;
+        }
         lexer.UngetToken(t);
         token_list.pop_back();
         if (parse_primary()) {
-            //Uncomment this
-            // if (t.token_type == ID){
-            //     return findDeclaration1(t1.lexeme);
-            // }
+            if (t.token_type == ID){
+                return make_pair(findDeclarationToken(t1.lexeme).token_type, true);
+            }
             return make_pair(t1.token_type, true);
         }
     } else if (t.token_type == AND || t.token_type == OR || t.token_type == XOR) {
@@ -382,6 +429,11 @@ pair<TokenType, bool> Parser::parse_expr() {
         TokenType tt = ERROR;
         if (t1.first == BOOLEAN && t2.first == BOOLEAN){
             tt = BOOLEAN;
+        }
+        else{
+            if (typeError == ""){
+                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
+            }
         }
         if (t1.second && t2.second){
             return make_pair(tt, true);
@@ -398,11 +450,12 @@ bool Parser::parse_primary() {
     if (t.token_type == ID){
         scope->usedVars.push_back(t.lexeme);
         if(!findInitialization(t.lexeme)){
-            errorCode = errorCode + "UNINITIALIZED " + t.lexeme + " " + to_string(t.line_no) + "\n";
+            uninError = uninError + "UNINITIALIZED " + t.lexeme + " " + to_string(t.line_no) + "\n";
         }
         if(!findDeclaration(t.lexeme)){
             errorCode = "ERROR CODE 1.2 " + t.lexeme;
         }
+        noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
     }
     if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM || t.token_type == STRING_CONSTANT) {
         return true;
@@ -416,7 +469,13 @@ bool Parser::parse_condition() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == LPAREN) {
-        if (parse_expr().second) {
+        pair<TokenType, bool> p = parse_expr();
+        if (p.first != BOOLEAN){
+            if (typeError == ""){
+                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C7";
+            }
+        }
+        if (p.second) {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == RPAREN) {
@@ -435,22 +494,34 @@ bool Parser::findDeclaration(string name){
         for (i = foo->vars.begin(); i != foo->vars.end(); i++){
             if (name == i->name){
                 found = true;
+                break;
             }
+        }
+        if (found){
+            break;
         }
         foo = foo->prev;
     }
     return found;
 }
 
-TokenType Parser::findDeclaration1(string name){
+Token Parser::findDeclarationToken(string name){
     vector<Variable>::iterator i;
-    TokenType found = ERROR;
+    Token found;
+    found.token_type = ERROR;
     Scope* foo = scope;
     while(foo != NULL){
         for (i = foo->vars.begin(); i != foo->vars.end(); i++){
             if (name == i->name){
-                found = i->token_type;
+                found.token_type = i->token_type;
+                found.line_no = i->line_no;
+                if (found.token_type != ERROR){
+                    break;
+                }
             }
+        }
+        if (found.token_type != ERROR){
+            break;
         }
         foo = foo->prev;
     }
@@ -459,10 +530,20 @@ TokenType Parser::findDeclaration1(string name){
 
 bool Parser::findInitialization(string name){
     bool found = false;
+    bool br = false;
     Scope* foo = scope;
     while(foo != NULL){
         if (find(foo->leftVars.begin(), foo->leftVars.end(), name) != foo->leftVars.end()){
             found = true;
+        }
+        vector<Variable>::iterator i;
+        for (i = foo->vars.begin(); i != foo->vars.end(); i++){
+            if (name == i->name){
+                br = true;
+            }
+        }
+        if (br){
+            break;
         }
         foo = foo->prev;
     }
@@ -471,8 +552,18 @@ bool Parser::findInitialization(string name){
 
 void Parser::addUsedVars(string name){
     Scope* foo = scope;
+    bool br = false;
     while(foo != NULL){
         foo->usedVars.push_back(name);
+        vector<Variable>::iterator i;
+        for (i = foo->vars.begin(); i != foo->vars.end(); i++){
+            if (name == i->name){
+                br = true;
+            }
+        }
+        if (br){
+            break;
+        }
         foo = foo->prev;
     }
 }
@@ -480,7 +571,22 @@ void Parser::addUsedVars(string name){
 int main() {
     Parser parser;
     if (parser.parse_program()) {
-        cout << errorCode << endl;
+        if (errorCode != ""){
+            cout << errorCode << endl;
+        }
+        else{
+            if (typeError != ""){
+                cout << typeError << endl;
+            }
+            else{
+                if (uninError != ""){
+                    cout << uninError << endl;
+                }
+                else{
+                    cout << noError << endl;
+                }
+            }
+        }
     } else {
         cout << "Syntax Error" << endl;
     }
