@@ -358,6 +358,9 @@ pair<TokenType, bool> Parser::parse_expr() {
         else if (t1.first == INT && t2.first == INT){
             tt = REAL;
         }
+        else if (t1.first == REAL && t2.first == REAL){
+            tt = REAL;
+        }
         else{
             if (typeError == ""){
                 typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
@@ -439,7 +442,16 @@ pair<TokenType, bool> Parser::parse_expr() {
             return make_pair(tt, true);
         }
     } else if (t.token_type == NOT) {
-        return parse_expr();
+        pair<TokenType, bool> t1 = parse_expr();
+        if (t1.first == BOOLEAN){
+            return t1;
+        }
+        else{
+            if (typeError == ""){
+                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
+            }
+            return make_pair(ERROR, true);
+        }
     }
     return make_pair(ERROR, false);
 }
