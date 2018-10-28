@@ -565,10 +565,10 @@ bool Parser::findInitialization(string name){
 void Parser::addUsedVars(string name){
     Scope* foo = scope;
     bool br = false;
-    while(foo != NULL){
-        foo->usedVars.push_back(name);
+    while(scope != NULL){
+        scope->usedVars.push_back(name);
         vector<Variable>::iterator i;
-        for (i = foo->vars.begin(); i != foo->vars.end(); i++){
+        for (i = scope->vars.begin(); i != scope->vars.end(); i++){
             if (name == i->name){
                 br = true;
             }
@@ -576,8 +576,9 @@ void Parser::addUsedVars(string name){
         if (br){
             break;
         }
-        foo = foo->prev;
+        scope = scope->prev;
     }
+    scope = foo;
 }
 
 int main() {
