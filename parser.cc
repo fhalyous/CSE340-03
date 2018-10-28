@@ -272,14 +272,16 @@ bool Parser::parse_assign_stmt() {
         token_list.push_back(t);
         if (t.token_type == EQUAL) {
             pair<TokenType, bool> p = parse_expr();
-            if (typeError == ""){
-                if (findDeclarationToken(tt.lexeme).token_type != REAL){
-                    if (findDeclarationToken(tt.lexeme).token_type != p.first){
+            if (findDeclarationToken(tt.lexeme).token_type != REAL){
+                if (findDeclarationToken(tt.lexeme).token_type != p.first){
+                    if (typeError == "" || stoi(typeError.substr(typeError.length()-1))==2){
                         typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
                     }
                 }
-                else if (findDeclarationToken(tt.lexeme).token_type == REAL){
-                    if (p.first != INT && p.first != REAL){
+            }
+            else if (findDeclarationToken(tt.lexeme).token_type == REAL){
+                if (p.first != INT && p.first != REAL){
+                    if (typeError == ""){
                         typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
                     }
                 }
@@ -341,7 +343,7 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = REAL;
         }
         else{
-            if (typeError == ""){
+            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 3){
                 typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
             }
         }
@@ -362,7 +364,7 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = REAL;
         }
         else{
-            if (typeError == ""){
+            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 3){
                 typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
             }
         }
@@ -382,7 +384,7 @@ pair<TokenType, bool> Parser::parse_expr() {
                 tt = BOOLEAN;
             }
             else{
-                if (typeError == ""){
+                if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 6){
                     typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C6";
                 }
             }
@@ -394,8 +396,8 @@ pair<TokenType, bool> Parser::parse_expr() {
             else if (t1.first == STRING && t2.first == STRING){
                 tt = BOOLEAN;
             }
-            else if (t1.first != t2.first){
-                if (typeError == ""){
+            else {
+                if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 5){
                     typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C5";
                 }
             }
@@ -421,7 +423,7 @@ pair<TokenType, bool> Parser::parse_expr() {
         lexer.UngetToken(t);
         token_list.pop_back();
         if (parse_primary()) {
-            if (t.token_type == ID){
+            if (t1.token_type == ID){
                 return make_pair(findDeclarationToken(t1.lexeme).token_type, true);
             }
             return make_pair(t1.token_type, true);
@@ -434,7 +436,7 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = BOOLEAN;
         }
         else{
-            if (typeError == ""){
+            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 4){
                 typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
             }
         }
@@ -442,16 +444,16 @@ pair<TokenType, bool> Parser::parse_expr() {
             return make_pair(tt, true);
         }
     } else if (t.token_type == NOT) {
-        pair<TokenType, bool> t1 = parse_expr();
-        if (t1.first == BOOLEAN){
-            return t1;
-        }
-        else{
-            if (typeError == ""){
-                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
-            }
-            return make_pair(ERROR, true);
-        }
+        return parse_expr();
+        // if (t1.first == BOOLEAN){
+        //     return t1;
+        // }
+        // else{
+        //     if (typeError == ""){
+        //         typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
+        //     }
+        //     return make_pair(ERROR, true);
+        // }
     }
     return make_pair(ERROR, false);
 }
