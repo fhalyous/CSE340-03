@@ -10,6 +10,7 @@
 #include <cctype>
 #include <set>
 #include <algorithm>
+#include <map>
 
 #include "parser.h"
 
@@ -26,7 +27,7 @@ string reserve[] = {"END_OF_FILE",
 
 Scope* scope = new Scope();
 string errorCode = "";
-string typeError = "";
+map<string, string> typeError;
 string uninError = "";
 string noError = "";
 
@@ -47,6 +48,7 @@ bool Parser::parse_scope() {
         Scope* sc = new Scope();
         sc->prev = scope;
         scope = sc;
+        scope->whilescope = sc;
         if (parse_scope_list()) {
             t = lexer.GetToken();
             token_list.push_back(t);
@@ -58,7 +60,7 @@ bool Parser::parse_scope() {
                     }
                     variableSet.insert(vars.name);
                     if (find(scope->usedVars.begin(), scope->usedVars.end(), vars.name) == scope->usedVars.end()){
-                        if (errorCode.find("1.3") != string::npos || errorCode == ""){
+                        if (errorCode == ""){
                             errorCode = "ERROR CODE 1.3 " + vars.name;
                         }
                     }
@@ -274,19 +276,20 @@ bool Parser::parse_assign_stmt() {
             pair<TokenType, bool> p = parse_expr();
             if (findDeclarationToken(tt.lexeme).token_type != REAL){
                 if (findDeclarationToken(tt.lexeme).token_type != p.first){
-                    if (typeError == "" || stoi(typeError.substr(typeError.length()-1))==2){
-                        typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
+                    if(typeError["C1"] == ""){
+                        typeError["C1"] = "TYPE MISMATCH " + to_string(tt.line_no) + " C1";
                     }
                 }
             }
             else if (findDeclarationToken(tt.lexeme).token_type == REAL){
                 if (p.first != INT && p.first != REAL){
-                    if (typeError == ""){
-                        typeError = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
+                    if(typeError["C2"] == ""){
+                        typeError["C2"] = "TYPE MISMATCH " + to_string(tt.line_no) + " C2";
                     }
                 }
             }
             scope->leftVars.push_back(lex);
+            scope->whilescope->leftVars.push_back(lex);
             if (p.second) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
@@ -307,10 +310,16 @@ bool Parser::parse_while_stmt() {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == LBRACE) {
+                Scope* foo = new Scope();
+                foo->prev = scope->whilescope;
+                scope->whilescope = foo;
                 if (parse_stmt_list()) {
                     t = lexer.GetToken();
                     token_list.push_back(t);
                     if (t.token_type == RBRACE) {
+                        Scope* temp = new Scope();
+                        scope->whilescope = scope->whilescope->prev;
+                        free(temp);
                         return true;
                     }
                 }
@@ -343,8 +352,8 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = REAL;
         }
         else{
-            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 3){
-                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
+            if(typeError["C3"] == ""){
+                typeError["C3"] = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
             }
         }
         if (t1.second && t2.second){
@@ -364,8 +373,8 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = REAL;
         }
         else{
-            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 3){
-                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
+            if(typeError["C3"] == ""){
+                typeError["C3"] = "TYPE MISMATCH " + to_string(t.line_no) + " C3";
             }
         }
         if (t1.second && t2.second){
@@ -384,8 +393,8 @@ pair<TokenType, bool> Parser::parse_expr() {
                 tt = BOOLEAN;
             }
             else{
-                if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 6){
-                    typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C6";
+                if(typeError["C6"] == ""){
+                    typeError["C6"] = "TYPE MISMATCH " + to_string(t.line_no) + " C6";
                 }
             }
         }
@@ -397,8 +406,8 @@ pair<TokenType, bool> Parser::parse_expr() {
                 tt = BOOLEAN;
             }
             else {
-                if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 5){
-                    typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C5";
+                if(typeError["C5"] == ""){
+                    typeError["C5"] = "TYPE MISMATCH " + to_string(t.line_no) + " C5";
                 }
             }
         }
@@ -436,8 +445,8 @@ pair<TokenType, bool> Parser::parse_expr() {
             tt = BOOLEAN;
         }
         else{
-            if (typeError == "" || stoi(typeError.substr(typeError.length()-1)) > 4){
-                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
+            if(typeError["C4"] == ""){
+                typeError["C4"] = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
             }
         }
         if (t1.second && t2.second){
@@ -445,15 +454,6 @@ pair<TokenType, bool> Parser::parse_expr() {
         }
     } else if (t.token_type == NOT) {
         return parse_expr();
-        // if (t1.first == BOOLEAN){
-        //     return t1;
-        // }
-        // else{
-        //     if (typeError == ""){
-        //         typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C4";
-        //     }
-        //     return make_pair(ERROR, true);
-        // }
     }
     return make_pair(ERROR, false);
 }
@@ -462,7 +462,7 @@ bool Parser::parse_primary() {
     Token t = lexer.GetToken();
     token_list.push_back(t);
     if (t.token_type == ID){
-        scope->usedVars.push_back(t.lexeme);
+        addUsedVars(t.lexeme);
         if(!findInitialization(t.lexeme)){
             uninError = uninError + "UNINITIALIZED " + t.lexeme + " " + to_string(t.line_no) + "\n";
         }
@@ -485,8 +485,8 @@ bool Parser::parse_condition() {
     if (t.token_type == LPAREN) {
         pair<TokenType, bool> p = parse_expr();
         if (p.first != BOOLEAN){
-            if (typeError == ""){
-                typeError = "TYPE MISMATCH " + to_string(t.line_no) + " C7";
+            if(typeError["C7"] == ""){
+                typeError["C7"] = "TYPE MISMATCH " + to_string(t.line_no) + " C7";
             }
         }
         if (p.second) {
@@ -545,7 +545,7 @@ Token Parser::findDeclarationToken(string name){
 bool Parser::findInitialization(string name){
     bool found = false;
     bool br = false;
-    Scope* foo = scope;
+    Scope* foo = scope->whilescope;
     while(foo != NULL){
         if (find(foo->leftVars.begin(), foo->leftVars.end(), name) != foo->leftVars.end()){
             found = true;
@@ -590,8 +590,28 @@ int main() {
             cout << errorCode << endl;
         }
         else{
-            if (typeError != ""){
-                cout << typeError << endl;
+            if (!typeError.empty()){
+                if (typeError["C3"] != ""){
+                    cout << typeError["C3"] << endl;
+                }
+                else if (typeError["C4"] != ""){
+                    cout << typeError["C4"] << endl;
+                }
+                else if (typeError["C5"] != ""){
+                    cout << typeError["C5"] << endl;
+                }
+                else if (typeError["C7"] != ""){
+                    cout << typeError["C7"] << endl;
+                }
+                else if (typeError["C6"] != ""){
+                    cout << typeError["C6"] << endl;
+                }
+                else if (typeError["C1"] != ""){
+                    cout << typeError["C1"] << endl;
+                }
+                else if (typeError["C2"] != ""){
+                    cout << typeError["C2"] << endl;
+                }
             }
             else{
                 if (uninError != ""){
