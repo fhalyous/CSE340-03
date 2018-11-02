@@ -20,7 +20,6 @@ struct Scope{
     std::vector<std::string> usedVars;
     std::vector<std::string> leftVars;
     Scope* prev;
-    Scope* whilescope;
 };
 
 class Parser{

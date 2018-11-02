@@ -48,7 +48,6 @@ bool Parser::parse_scope() {
         Scope* sc = new Scope();
         sc->prev = scope;
         scope = sc;
-        scope->whilescope = sc;
         if (parse_scope_list()) {
             t = lexer.GetToken();
             token_list.push_back(t);
@@ -268,7 +267,9 @@ bool Parser::parse_assign_stmt() {
                 errorCode = "ERROR CODE 1.2 " + lex;
             }
         }
-        noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
+        if (findDeclarationToken(t.lexeme).token_type != ERROR){
+            noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
+        }
         Token tt = t;
         t = lexer.GetToken();
         token_list.push_back(t);
@@ -289,7 +290,6 @@ bool Parser::parse_assign_stmt() {
                 }
             }
             scope->leftVars.push_back(lex);
-            scope->whilescope->leftVars.push_back(lex);
             if (p.second) {
                 t = lexer.GetToken();
                 token_list.push_back(t);
@@ -310,15 +310,15 @@ bool Parser::parse_while_stmt() {
             t = lexer.GetToken();
             token_list.push_back(t);
             if (t.token_type == LBRACE) {
-                Scope* foo = new Scope();
-                foo->prev = scope->whilescope;
-                scope->whilescope = foo;
+                Scope* sc = new Scope();
+                sc->prev = scope;
+                scope = sc;
                 if (parse_stmt_list()) {
                     t = lexer.GetToken();
                     token_list.push_back(t);
                     if (t.token_type == RBRACE) {
-                        Scope* temp = new Scope();
-                        scope->whilescope = scope->whilescope->prev;
+                        Scope* temp = scope;
+                        scope = scope->prev;
                         free(temp);
                         return true;
                     }
@@ -469,7 +469,9 @@ bool Parser::parse_primary() {
         if(!findDeclaration(t.lexeme)){
             errorCode = "ERROR CODE 1.2 " + t.lexeme;
         }
-        noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
+        if (findDeclarationToken(t.lexeme).token_type != ERROR){
+            noError = noError + t.lexeme + " " + to_string(t.line_no) + " " + to_string(findDeclarationToken(t.lexeme).line_no) + "\n";
+        }
     }
     if (t.token_type == ID || t.token_type == NUM || t.token_type == REALNUM || t.token_type == STRING_CONSTANT) {
         return true;
@@ -484,7 +486,7 @@ bool Parser::parse_condition() {
     token_list.push_back(t);
     if (t.token_type == LPAREN) {
         pair<TokenType, bool> p = parse_expr();
-        if (p.first != BOOLEAN){
+        if (p.first != BOOLEAN && p.first != TRUE && p.first != FALSE){
             if(typeError["C7"] == ""){
                 typeError["C7"] = "TYPE MISMATCH " + to_string(t.line_no) + " C7";
             }
@@ -543,25 +545,24 @@ Token Parser::findDeclarationToken(string name){
 }
 
 bool Parser::findInitialization(string name){
-    bool found = false;
-    bool br = false;
-    Scope* foo = scope->whilescope;
+    Scope* foo = scope;
     while(foo != NULL){
         if (find(foo->leftVars.begin(), foo->leftVars.end(), name) != foo->leftVars.end()){
-            found = true;
+            return true;
         }
         vector<Variable>::iterator i;
         for (i = foo->vars.begin(); i != foo->vars.end(); i++){
             if (name == i->name){
-                br = true;
+                if (find(foo->leftVars.begin(), foo->leftVars.end(), name) != foo->leftVars.end()){
+                    return true;
+                }else{
+                    return false;
+                }
             }
-        }
-        if (br){
-            break;
         }
         foo = foo->prev;
     }
-    return found;
+    return false;
 }
 
 void Parser::addUsedVars(string name){
