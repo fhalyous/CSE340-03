@@ -601,11 +601,11 @@ int main() {
                 else if (typeError["C5"] != ""){
                     cout << typeError["C5"] << endl;
                 }
-                else if (typeError["C7"] != ""){
-                    cout << typeError["C7"] << endl;
-                }
                 else if (typeError["C6"] != ""){
                     cout << typeError["C6"] << endl;
+                }
+                else if (typeError["C7"] != ""){
+                    cout << typeError["C7"] << endl;
                 }
                 else if (typeError["C1"] != ""){
                     cout << typeError["C1"] << endl;
